@@ -1,4 +1,4 @@
-package org.georchestra.extractorapp.ws.extractor.task;
+package org.georchestra.commons.task;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,12 +38,12 @@ public class ExtractionManager {
     /** comparison by priorities */
 
     private final static int INITIAL_CAPACITY = 20;
-    private Queue<ExtractionTask> readyTaskQueue = new PriorityBlockingQueue<ExtractionTask>(INITIAL_CAPACITY); 
+    private Queue<ExecutionTaskInterface> readyTaskQueue = new PriorityBlockingQueue<ExecutionTaskInterface>(INITIAL_CAPACITY);
     
-    private Collection<ExtractionTask> cancelledTaskQueue = new PriorityBlockingQueue<ExtractionTask>();
+    private Collection<ExecutionTaskInterface> cancelledTaskQueue = new PriorityBlockingQueue<ExecutionTaskInterface>();
     
     /** maintains the paused tasks. They can be selected by the user in random way */
-    private Map<String, ExtractionTask> pausedTasks = Collections.synchronizedMap(new HashMap<String, ExtractionTask>());
+    private Map<String, ExecutionTaskInterface> pausedTasks = Collections.synchronizedMap(new HashMap<String, ExecutionTaskInterface>());
     
     @Autowired
     private GeorchestraConfiguration georConfig ;
@@ -77,19 +77,19 @@ public class ExtractionManager {
         this.minThreads = minThreads;
     }
 
+
     /**
      * Submits the task taking into account the task priorities.
      * 
-     * @param newTask
-     * @throws Exception 
+     * @param task
      */
-	public synchronized void submit(ExtractionTask extractor) {
+	public synchronized void submit(ExecutionTaskInterface task) {
 
 		// creates the waiting task queue ordered by priority task
-		this.readyTaskQueue.offer(extractor);
+		this.readyTaskQueue.offer(task);
 
-		Future<?> future = executor.submit(extractor);
-		extractor.executionMetadata.setFuture(future);
+		Future<?> future = executor.submit(task);
+		task.getMetadata().setFuture(future);
 	}
 
 
@@ -102,12 +102,12 @@ public class ExtractionManager {
     public synchronized void updatePriority(final String id, final ExecutionPriority newPriority) {
     	
         // search in the waiting tasks and updates the priority of the task
-        ExtractionTask foundTask = null;
-		for (ExtractionTask task : this.readyTaskQueue) {
-			if(task.executionMetadata.getState().equals(ExecutionState.WAITING) ){
-				Future<?> future = task.executionMetadata.getFuture();
+        ExecutionTaskInterface foundTask = null;
+		for (ExecutionTaskInterface task : this.readyTaskQueue) {
+			if(task.getMetadata().getState().equals(ExecutionState.WAITING) ){
+				Future<?> future = task.getMetadata().getFuture();
 				if(!future.isCancelled() && !future.isDone()){					
-		            if (task.equalId(id)) {
+		            if (task.getMetadata().getUuid().equals(id)) {
 		            	foundTask = task;
 		            	break;
 		            }
@@ -124,10 +124,10 @@ public class ExtractionManager {
 			
 // XXX the commented lines where replaced by de following, looks like the ClassCastException was solved. Requires more test.
 // the following code throws a ClassCastException: java.util.concurrent.FutureTask cannot be cast to java.lang.Comparable			
-			foundTask.executionMetadata.setPriority(newPriority);
-			ExtractionTask taskCloned = new ExtractionTask(foundTask);
+			foundTask.getMetadata().setPriority(newPriority);
+            ExecutionTaskInterface taskCloned = foundTask.clone();
 		
-			foundTask.executionMetadata.getFuture().cancel(true);
+			foundTask.getMetadata().getFuture().cancel(true);
 			this.executor.remove(foundTask);
 			this.executor.purge();
 			this.readyTaskQueue.remove(foundTask);
@@ -137,9 +137,9 @@ public class ExtractionManager {
 			
         } else {
         	// searches if the task is in the paused queue
-        	ExtractionTask pausedTask = this.pausedTasks.get(id);
+            ExecutionTaskInterface pausedTask = this.pausedTasks.get(id);
         	if(pausedTask != null){
-            	pausedTask.executionMetadata.setPriority(newPriority);
+            	pausedTask.getMetadata().setPriority(newPriority);
         	}
         }
     }
@@ -154,28 +154,28 @@ public class ExtractionManager {
      */
     public synchronized void updateAllPriorities(final List<String> newOrder) {
         executor.purge();
-        Collection<ExtractionTask> newWaitingTasks = new TreeSet<ExtractionTask>(new Comparator<ExtractionTask>(){
+        Collection<ExecutionTaskInterface> newWaitingTasks = new TreeSet<ExecutionTaskInterface>(new Comparator<ExecutionTaskInterface>(){
 
             @Override
-            public int compare(ExtractionTask task1, ExtractionTask task2) {
-                return newOrder.indexOf(task1.executionMetadata.getUuid()) - newOrder.indexOf(task2.executionMetadata.getUuid());
+            public int compare(ExecutionTaskInterface task1, ExecutionTaskInterface task2) {
+                return newOrder.indexOf(task1.getMetadata().getUuid()) - newOrder.indexOf(task2.getMetadata().getUuid());
             }
             
         });
-        for (ExtractionTask task : this.readyTaskQueue) {
-            if(task.executionMetadata.isWaiting()) {
+        for (ExecutionTaskInterface task : this.readyTaskQueue) {
+            if(task.getMetadata().isWaiting()) {
                 readyTaskQueue.remove(task);
-                if(newOrder.contains(task.executionMetadata.getUuid())) {
+                if(newOrder.contains(task.getMetadata().getUuid())) {
                     newWaitingTasks.add(task);
                 } else {
-                    task.executionMetadata.cancel();
+                    task.getMetadata().cancel();
                     cancelledTaskQueue.add(task);
                 }
             }
         }
         
-        for (ExtractionTask task : newWaitingTasks) {
-            task.executionMetadata.setPriority(ExecutionPriority.MEDIUM);
+        for (ExecutionTaskInterface task : newWaitingTasks) {
+            task.getMetadata().setPriority(ExecutionPriority.MEDIUM);
             submit(task);
         }
     }
@@ -186,10 +186,10 @@ public class ExtractionManager {
      */
     public synchronized void removeTask(String uuid) {
     	
-        for (ExtractionTask task : this.readyTaskQueue) {
-        	if(task.executionMetadata.getPriority().equals(ExecutionState.WAITING) ){
-                if (task.equalId(uuid)) {
-                    task.executionMetadata.cancel();
+        for (ExecutionTaskInterface task : this.readyTaskQueue) {
+        	if(task.getMetadata().getPriority().equals(ExecutionState.WAITING) ){
+                if (task.getMetadata().getUuid().equals(uuid)) {
+                    task.getMetadata().cancel();
                     this.executor.remove(task);
                     // move from ready to canceled list
                     readyTaskQueue.remove(task);
@@ -206,14 +206,14 @@ public class ExtractionManager {
      */
     public synchronized List<ExecutionMetadata> getTaskQueue() {
         List<ExecutionMetadata> queue = new ArrayList<ExecutionMetadata>();
-        for (ExtractionTask task : this.readyTaskQueue) {
-            queue.add(new ExecutionMetadata(task.executionMetadata));
+        for (ExecutionTaskInterface task : this.readyTaskQueue) {
+            queue.add(new ExecutionMetadata(task.getMetadata()));
         }
-        for (ExtractionTask task : this.pausedTasks.values()) {
-            queue.add(new ExecutionMetadata(task.executionMetadata));
+        for (ExecutionTaskInterface task : this.pausedTasks.values()) {
+            queue.add(new ExecutionMetadata(task.getMetadata()));
         }
-        for (ExtractionTask task : this.cancelledTaskQueue) {
-            queue.add(new ExecutionMetadata(task.executionMetadata));
+        for (ExecutionTaskInterface task : this.cancelledTaskQueue) {
+            queue.add(new ExecutionMetadata(task.getMetadata()));
         }
         return queue;
     }
@@ -223,13 +223,13 @@ public class ExtractionManager {
      * The search is done between the waiting, paused tasks
      * 
      * @param uuid	identifier of task to find
-     * @return the {@link ExtractionTask} it exists, null in other case.
+     * @return the {@link ExecutionTaskInterface} it exists, null in other case.
      */
-    public synchronized ExtractionTask findTask(final String uuid) {
+    public synchronized ExecutionTaskInterface findTask(final String uuid) {
     	
-    	List<ExtractionTask> tasks = queryRunableTask();
-        for (ExtractionTask task: tasks) {
-            if (task.equalId(uuid)) {
+    	List<ExecutionTaskInterface> tasks = queryRunableTask();
+        for (ExecutionTaskInterface task: tasks) {
+            if (task.getMetadata().getUuid().equals(uuid)) {
             	return task;
             }
         }
@@ -239,16 +239,16 @@ public class ExtractionManager {
     /**
      * @return Returns the waiting, paused tasks. That is all runnable tasks.
      */
-    private List<ExtractionTask> queryRunableTask(){
+    private List<ExecutionTaskInterface> queryRunableTask(){
     	
-        List<ExtractionTask> queue = new LinkedList<ExtractionTask>();
-        for (ExtractionTask task : this.readyTaskQueue) {
-        	ExecutionState st = task.executionMetadata.getState();
+        List<ExecutionTaskInterface> queue = new LinkedList<ExecutionTaskInterface>();
+        for (ExecutionTaskInterface task : this.readyTaskQueue) {
+        	ExecutionState st = task.getMetadata().getState();
         	if(st.equals(ExecutionState.WAITING)){
                 queue.add(task);
         	}
         }
-        for (ExtractionTask pausedTask : this.pausedTasks.values()) {
+        for (ExecutionTaskInterface pausedTask : this.pausedTasks.values()) {
             queue.add(pausedTask);
         }
         return queue;
@@ -285,20 +285,20 @@ public class ExtractionManager {
 	 * @param id task's identifier
 	 */
     private void cancelTask(final String id) {
-    	
-    	ExtractionTask foundTask = findTask(id);
+
+        ExecutionTaskInterface foundTask = findTask(id);
 
 		if(foundTask == null){
 			return;
 		}
 		
-		if (foundTask.executionMetadata.isWaiting() ){
+		if (foundTask.getMetadata().isWaiting() ){
 
 		    this.readyTaskQueue.remove(foundTask);
 		    this.cancelledTaskQueue.add(foundTask);
 		    cancelProcess(foundTask);
 			
-		} else if( foundTask.executionMetadata.isPaused() ) {
+		} else if( foundTask.getMetadata().isPaused() ) {
 
         	this.pausedTasks.remove(id);
         	this.cancelledTaskQueue.add(foundTask);
@@ -310,10 +310,10 @@ public class ExtractionManager {
      * Cancel the process 
      * @param task
      */
-    private synchronized boolean cancelProcess(final ExtractionTask task) {
+    private synchronized boolean cancelProcess(final ExecutionTaskInterface task) {
     	
-    	task.executionMetadata.cancel();
-    	boolean wasCanceled = task.executionMetadata.getFuture().cancel(true);
+    	task.getMetadata().cancel();
+    	boolean wasCanceled = task.getMetadata().getFuture().cancel(true);
     	this.executor.remove(task); // purge cancelled task
     	return wasCanceled;
     }
@@ -325,11 +325,11 @@ public class ExtractionManager {
      */
     private synchronized void pauseTask(final String id){
 
-    	ExtractionTask foundTask = null;
-        for (ExtractionTask task: this.readyTaskQueue) {
-        	if(task.executionMetadata.getState().equals(ExecutionState.WAITING)){
-        		if(!task.executionMetadata.getFuture().isCancelled() && !task.executionMetadata.getFuture().isDone()){
-                    if (task.equalId(id)) {
+        ExecutionTaskInterface foundTask = null;
+        for (ExecutionTaskInterface task: this.readyTaskQueue) {
+        	if(task.getMetadata().getState().equals(ExecutionState.WAITING)){
+        		if(!task.getMetadata().getFuture().isCancelled() && !task.getMetadata().getFuture().isDone()){
+                    if (task.getMetadata().getUuid().equals(id)) {
                     	foundTask = task;
                     	break;
                     }
@@ -348,10 +348,10 @@ public class ExtractionManager {
 //        this.pausedTasks.put(id, foundTask);
 //        
 //XXX Replaced by the following sentences:        
-        foundTask.executionMetadata.setPaused();
-		ExtractionTask taskCloned = new ExtractionTask(foundTask);
+        foundTask.getMetadata().setPaused();
+        ExecutionTaskInterface taskCloned = foundTask.clone();
 	
-		foundTask.executionMetadata.getFuture().cancel(true);
+		foundTask.getMetadata().getFuture().cancel(true);
 		this.executor.remove(foundTask);
 		this.executor.purge();
 		this.readyTaskQueue.remove(foundTask);
@@ -366,27 +366,26 @@ public class ExtractionManager {
      */
     private synchronized void resumeTask(final String id){
 
-    	ExtractionTask foundTask = this.pausedTasks.get(id);
+        ExecutionTaskInterface foundTask = this.pausedTasks.get(id);
     	if( foundTask != null){
     		this.pausedTasks.remove(id);
-    		foundTask.executionMetadata.setWaiting();
-    		
+    		foundTask.getMetadata().setWaiting();
     		submit(foundTask);
     	}
     }
 	
     public synchronized void cleanExpiredTasks(long expiry) {
-        ArrayList<ExtractionTask> toRemove = new ArrayList<ExtractionTask>();
-        for (ExtractionTask task : readyTaskQueue) {
-            ExecutionMetadata metadata = task.executionMetadata;
+        ArrayList<ExecutionTaskInterface> toRemove = new ArrayList<ExecutionTaskInterface>();
+        for (ExecutionTaskInterface task : readyTaskQueue) {
+            ExecutionMetadata metadata = task.getMetadata();
             if (metadata.isCompleted() && (metadata.getStateChangeTime().getTime() + expiry) > System.currentTimeMillis()) {
                 toRemove.add(task);
             }
         }
         readyTaskQueue.removeAll(toRemove);
         toRemove.clear();
-        for (ExtractionTask task : cancelledTaskQueue) {
-            ExecutionMetadata metadata = task.executionMetadata;
+        for (ExecutionTaskInterface task : cancelledTaskQueue) {
+            ExecutionMetadata metadata = task.getMetadata();
             if ((metadata.getStateChangeTime().getTime() + expiry) > System.currentTimeMillis()) {
                 toRemove.add(task);
             }

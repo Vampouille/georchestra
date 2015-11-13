@@ -1,4 +1,4 @@
-package org.georchestra.extractorapp.ws.extractor.task;
+package org.georchestra.commons.task;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;

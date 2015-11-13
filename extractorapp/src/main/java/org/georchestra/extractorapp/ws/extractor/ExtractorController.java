@@ -22,14 +22,15 @@ import org.apache.commons.httpclient.UsernamePasswordCredentials;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.georchestra.commons.configuration.GeorchestraConfiguration;
+import org.georchestra.commons.task.*;
 import org.georchestra.extractorapp.ws.AbstractEmailFactory;
 import org.georchestra.extractorapp.ws.Email;
 import org.georchestra.extractorapp.ws.acceptance.CheckFormAcceptance;
-import org.georchestra.extractorapp.ws.extractor.task.ExecutionMetadata;
-import org.georchestra.extractorapp.ws.extractor.task.ExecutionPriority;
-import org.georchestra.extractorapp.ws.extractor.task.ExtractionManager;
-import org.georchestra.extractorapp.ws.extractor.task.ExtractionTask;
+import org.georchestra.extractorapp.ws.extractor.task.*;
+import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONStringer;
+import org.json.JSONWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -142,7 +143,7 @@ public class ExtractorController implements ServletContextAware {
     }
 
     /**
-     * Lists the tasks waiting in the extraction queue.
+     * Lists the tasks waiting in the extraction queue. Return list in JSON format.
      *
      * @param request
      * @param response
@@ -155,14 +156,46 @@ public class ExtractorController implements ServletContextAware {
 
         List<ExecutionMetadata> taskQueue = extractionManager.getTaskQueue();
 
-        ExtractorGetTaskQueueResponse responseData = ExtractorGetTaskQueueResponse.newInstance(taskQueue);
+        JSONArray jsonTaskArray = new JSONArray();
+        int i = 0;
+        for (ExecutionMetadata metadata : taskQueue) {
+
+            String uuid = metadata.getUuid();
+            String requestor= metadata.getRequestor();
+            Integer priority = metadata.getPriority().ordinal();
+            ExecutionState status = metadata.getState();
+            JSONObject spec = new JSONObject( metadata.getSpec() );
+            String requestTimeStamp = TaskDescriptor.formatDate(metadata.getRequestTime());
+
+            String beginTimeStamp = TaskDescriptor.formatDate(metadata.getBeginTime());
+            String endTimeStamp = TaskDescriptor.formatDate(metadata.getEndTime());
+
+            JSONObject jsonTask = new JSONObject();
+            jsonTask.put(TaskDescriptor.UUID_KEY, uuid);
+            jsonTask.put(TaskDescriptor.REQUESTOR_KEY, requestor);
+            jsonTask.put(TaskDescriptor.PRIORITY_KEY, priority);
+            jsonTask.put(TaskDescriptor.STATE_KEY, status.toString());
+            jsonTask.put(TaskDescriptor.SPEC_KEY, spec);
+            jsonTask.put(TaskDescriptor.REQUEST_TS_KEY, requestTimeStamp);
+            jsonTask.put(TaskDescriptor.BEGIN_TS_KEY, beginTimeStamp);
+            jsonTask.put(TaskDescriptor.END_TS_KEY, endTimeStamp);
+
+            jsonTaskArray.put(i, jsonTask);
+            i++;
+        }
+
+        JSONWriter jsonTaskQueue = new JSONStringer()
+                .object()
+                .key("tasks")
+                .value(jsonTaskArray)
+                .endObject();
 
         response.setCharacterEncoding(responseCharset);
         response.setContentType("application/json");
 
         PrintWriter out = response.getWriter();
         try {
-            out.println(responseData.asJsonString());
+            out.println(jsonTaskQueue.toString());
         } finally {
             out.close();
         }
@@ -228,13 +261,13 @@ public class ExtractorController implements ServletContextAware {
      */
     private TaskDescriptor findTask(final String id) throws TaskNotFoundException {
 
-        ExtractionTask foundTask = extractionManager.findTask(id);
+        ExecutionTaskInterface foundTask = extractionManager.findTask(id);
         if (foundTask == null) {
             // the required task could be removed. It could be removed for the
             // queue by other process.
             throw new TaskNotFoundException("The task wask not found. ID: " + id);
         }
-        TaskDescriptor task = new TaskDescriptor(foundTask.executionMetadata);
+        TaskDescriptor task = new TaskDescriptor(foundTask.getMetadata());
 
         return task;
     }
@@ -243,11 +276,11 @@ public class ExtractorController implements ServletContextAware {
      * Updates the task's priority.
      *
      * @param uuid
-     * @param priority
+     * @param intPriority
      *            valid values are 0-LOW, 1-MEDIUM, 2-HIGH
      * @throws Exception
      */
-    private void updatePriority(String uuid, int priority) throws IllegalArgumentException, InvalidPriorityException {
+    private void updatePriority(String uuid, int intPriority) throws IllegalArgumentException, InvalidPriorityException {
 
         if (uuid == null || "".equals(uuid)) {
             final String msg = "updatePriority method expects an uuid";
@@ -255,17 +288,26 @@ public class ExtractorController implements ServletContextAware {
             LOG.error(msg, e);
             throw e;
         }
-        if (priority < ExecutionPriority.LOW.ordinal() || priority > ExecutionPriority.HIGH.ordinal()) {
+        if (intPriority < ExecutionPriority.LOW.ordinal() || intPriority > ExecutionPriority.HIGH.ordinal()) {
             final String msg = "updatePriority method expects an priority value between " + ExecutionPriority.LOW.ordinal() + " and "
                     + ExecutionPriority.HIGH.ordinal();
             InvalidPriorityException e = new InvalidPriorityException(msg);
             LOG.error(msg, e);
             throw e;
-
         }
-        ExtractorUpdatePriorityRequest updatePriorityRequest = ExtractorUpdatePriorityRequest.newInstance(uuid, priority);
 
-        this.extractionManager.updatePriority(updatePriorityRequest._uuid, updatePriorityRequest._priority);
+        ExecutionPriority priority = null;
+        for (ExecutionPriority p: ExecutionPriority.values()) {
+            if(p.ordinal() == intPriority){
+                priority = p;
+                break;
+            }
+        }
+        if(priority == null){
+            throw new IllegalArgumentException("the priority value: "+ intPriority +" is not valid.");
+        }
+
+        this.extractionManager.updatePriority(uuid, priority);
     }
 
     // ----------------- implementation of extraction ----------------- //

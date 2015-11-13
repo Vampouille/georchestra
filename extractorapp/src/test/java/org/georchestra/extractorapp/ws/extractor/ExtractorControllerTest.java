@@ -1,7 +1,7 @@
 package org.georchestra.extractorapp.ws.extractor;
 
 import junit.framework.Assert;
-import org.georchestra.extractorapp.ws.extractor.task.ExtractionManager;
+import org.georchestra.commons.task.ExtractionManager;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;

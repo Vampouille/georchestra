@@ -1,4 +1,4 @@
-package org.georchestra.extractorapp.ws.extractor.task;
+package org.georchestra.commons.task;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
@@ -36,31 +36,33 @@ public class PriorityThreadPoolExecutor extends ThreadPoolExecutor {
 				threadFactory);
 	}
 
+	@Override
 	protected <T> RunnableFuture<T> newTaskFor (Runnable runnable, T value) {
 	    return new ComparableFutureTask<T> (runnable, value);
 	  }
 
-	  protected <T> RunnableFuture<T> newTaskFor (Callable<T> callable) {
+	@Override
+	protected <T> RunnableFuture<T> newTaskFor (Callable<T> callable) {
 	    return new ComparableFutureTask<T> (callable);
 	  }
 
-	  static class ComparableFutureTask<V> extends FutureTask<V> implements Comparable<ComparableFutureTask<V>> {
-	    Comparable comparable;
+	static class ComparableFutureTask<V> extends FutureTask<V> implements Comparable<ComparableFutureTask<V>> {
+		Comparable comparable;
 
-	    ComparableFutureTask (Callable<V> callable) {
-	      super (callable);
-	      comparable = (Comparable) callable;
-	    }
+		ComparableFutureTask (Callable<V> callable) {
+			super (callable);
+			comparable = (Comparable) callable;
+		}
 
-	    ComparableFutureTask (Runnable runnable, V result) {
-	      super (runnable, result);
-	      comparable = (Comparable) runnable;
-	    }
+		ComparableFutureTask (Runnable runnable, V result) {
+			super (runnable, result);
+			comparable = (Comparable) runnable;
+		}
 
-	    @SuppressWarnings("unchecked")
-	    public int compareTo (ComparableFutureTask<V> ftask) {
-	      return comparable.compareTo (ftask.comparable);
-	    }
-	  }
+		@SuppressWarnings("unchecked")
+		public int compareTo (ComparableFutureTask<V> ftask) {
+			return comparable.compareTo (ftask.comparable);
+		}
 	}
+}
 

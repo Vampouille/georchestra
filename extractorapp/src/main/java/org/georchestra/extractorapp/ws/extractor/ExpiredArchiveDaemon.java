@@ -7,7 +7,7 @@ import java.util.TimerTask;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.georchestra.extractorapp.ws.extractor.task.ExtractionManager;
+import org.georchestra.commons.task.ExtractionManager;
 
 
 /**

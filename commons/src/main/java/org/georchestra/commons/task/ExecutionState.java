@@ -1,4 +1,4 @@
-package org.georchestra.extractorapp.ws.extractor.task;
+package org.georchestra.commons.task;
 
 public enum ExecutionState {
     WAITING, RUNNING, PAUSED, COMPLETED, CANCELLED

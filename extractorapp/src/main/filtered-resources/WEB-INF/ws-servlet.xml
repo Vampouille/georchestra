@@ -55,7 +55,7 @@
         <property name="extractionManager" ref="extractionManager"/>
     </bean>
 
-    <bean id="extractionManager" class="org.georchestra.extractorapp.ws.extractor.task.ExtractionManager" init-method="init">
+    <bean id="extractionManager" class="org.georchestra.commons.task.ExtractionManager" init-method="init">
         <property name="minThreads" value="1"/>
         <property name="maxExtractions" value="100"/>
     </bean>

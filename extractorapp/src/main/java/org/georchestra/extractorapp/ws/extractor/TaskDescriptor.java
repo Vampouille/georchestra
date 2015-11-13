@@ -7,9 +7,9 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import org.georchestra.extractorapp.ws.extractor.task.ExecutionMetadata;
-import org.georchestra.extractorapp.ws.extractor.task.ExecutionPriority;
-import org.georchestra.extractorapp.ws.extractor.task.ExecutionState;
+import org.georchestra.commons.task.ExecutionMetadata;
+import org.georchestra.commons.task.ExecutionPriority;
+import org.georchestra.commons.task.ExecutionState;
 import org.json.JSONException;
 import org.json.JSONObject;
 

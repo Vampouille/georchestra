@@ -1,4 +1,4 @@
-package org.georchestra.extractorapp.ws.extractor.task;
+package org.georchestra.commons.task;
 
 import java.util.Date;
 import java.util.UUID;
@@ -46,15 +46,11 @@ public class ExecutionMetadata {
         return uuid;
     }
 
-    public String getSpec() {
-		
-		return this.requests;
-	}
+    public String getSpec() { return this.requests;  }
 
 	public String getRequestor() {
 		return requestor;
 	}
-
 
 	public Date getRequestTime() {
 		return requestTime;
@@ -83,7 +79,6 @@ public class ExecutionMetadata {
         endTime= stateChangeTime;
     }
 
-
     public synchronized ExecutionState getState() {
         return state;
     }
@@ -95,6 +90,7 @@ public class ExecutionMetadata {
     public synchronized ExecutionPriority getPriority() {
         return priority;
     }
+
     public Date getBeginTime() {
 		return beginTime;
 	}
@@ -106,8 +102,8 @@ public class ExecutionMetadata {
     public synchronized void setPriority(ExecutionPriority priority) {
         this.priority = priority;
     }
-    public
-    synchronized void setFuture(Future<?> future) {
+
+    public synchronized void setFuture(Future<?> future) {
         this.future = future;
     }
 
