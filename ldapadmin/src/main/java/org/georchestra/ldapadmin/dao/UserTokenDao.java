@@ -10,7 +10,7 @@ import java.util.List;
 @Repository
 public interface UserTokenDao extends CrudRepository<UserToken, String> {
 
-    public List<UserToken> findByBeforeCreationDate(Date date);
+    public List<UserToken> findByCreationDateBefore(Date date);
 
     public UserToken findOneByToken(String token);
 

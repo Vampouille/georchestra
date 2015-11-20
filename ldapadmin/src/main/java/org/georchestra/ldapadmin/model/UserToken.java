@@ -4,7 +4,7 @@ import javax.persistence.*;
 import java.util.Date;
 
 @Entity
-@Table(name = "ldapadmin.user_token")
+@Table(schema = "ldapadmin", name = "user_token")
 public class UserToken {
 
     @Id

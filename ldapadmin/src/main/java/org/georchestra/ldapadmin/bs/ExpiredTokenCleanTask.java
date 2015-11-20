@@ -41,7 +41,7 @@ public class ExpiredTokenCleanTask implements Runnable {
 		long now = calendar.getTimeInMillis();
 		Date expired = new Date(now - this.delayInMilliseconds);
 
-		for(UserToken userToken : userTokenRepo.findByBeforeCreationDate(expired))
+		for(UserToken userToken : userTokenRepo.findByCreationDateBefore(expired))
 			userTokenRepo.delete(userToken);
 
 	}
