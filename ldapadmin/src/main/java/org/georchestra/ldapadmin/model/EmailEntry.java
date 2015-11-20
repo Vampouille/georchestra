@@ -22,7 +22,7 @@ public class EmailEntry {
     private String body;
 
     @ManyToMany(targetEntity = Attachment.class, fetch = FetchType.EAGER)
-    @JoinTable(schema = "ldapadmin", name="admin_emails_attchments")
+    @JoinTable(schema = "ldapadmin", name="admin_emails_attachments")
     private List<Attachment> attachments;
 
     public EmailEntry(){}

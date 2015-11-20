@@ -8,7 +8,6 @@ import java.util.Date;
 public class UserToken {
 
     @Id
-    @GeneratedValue(strategy= GenerationType.AUTO)
     private String uid;
     private String token;
     private Date creationDate;

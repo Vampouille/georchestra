@@ -9,11 +9,12 @@ import java.util.List;
 import org.georchestra.ldapadmin.ds.AccountDao;
 import org.georchestra.ldapadmin.ds.DataServiceException;
 import org.georchestra.ldapadmin.ds.NotFoundException;
-import org.georchestra.ldapadmin.ds.UserTokenDao;
+import org.georchestra.ldapadmin.dao.UserTokenDao;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -22,8 +23,10 @@ import org.springframework.web.bind.support.SessionStatus;
 public class NewPasswordFormControllerTest {
 
     private AccountDao accountDao = Mockito.mock(AccountDao.class);
-    private UserTokenDao userTokenDao = Mockito.mock(UserTokenDao.class);
-    private NewPasswordFormController ctrl = new NewPasswordFormController(accountDao, userTokenDao);
+
+    @Autowired
+    private UserTokenDao userTokenRepo = Mockito.mock(UserTokenDao.class);
+    private NewPasswordFormController ctrl = new NewPasswordFormController();
 
     @Before
     public void setUp() throws Exception {
@@ -56,7 +59,7 @@ public class NewPasswordFormControllerTest {
     @Test
     public void testSetupFormUserNotFound() throws Exception {
         Model model = Mockito.mock(Model.class);
-        Mockito.doThrow(new NotFoundException("User not found")).when(userTokenDao).findUserByToken(Mockito.anyString());
+        Mockito.doThrow(new NotFoundException("User not found")).when(userTokenRepo).findOneByToken(Mockito.anyString());
 
         String ret = ctrl.setupForm("test", model);
         assertTrue(ret.equals("passwordRecoveryForm"));
@@ -64,7 +67,7 @@ public class NewPasswordFormControllerTest {
     @Test
     public void testSetupFormDataServiceException() throws Exception {
         Model model = Mockito.mock(Model.class);
-        Mockito.doThrow(new DataServiceException("Error while accessing db")).when(userTokenDao).findUserByToken(Mockito.anyString());
+        Mockito.doThrow(new DataServiceException("Error while accessing db")).when(userTokenRepo).findOneByToken(Mockito.anyString());
 
         try {
             ctrl.setupForm("test", model);

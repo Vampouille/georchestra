@@ -15,12 +15,13 @@ import org.georchestra.ldapadmin.ds.AccountDao;
 import org.georchestra.ldapadmin.ds.DataServiceException;
 import org.georchestra.ldapadmin.ds.GroupDao;
 import org.georchestra.ldapadmin.ds.NotFoundException;
-import org.georchestra.ldapadmin.ds.UserTokenDao;
+import org.georchestra.ldapadmin.dao.UserTokenDao;
 import org.georchestra.ldapadmin.dto.Account;
 import org.georchestra.ldapadmin.dto.Group;
 import org.georchestra.ldapadmin.dto.GroupFactory;
 import org.georchestra.ldapadmin.mailservice.EmailFactoryImpl;
 import org.georchestra.ldapadmin.mailservice.MailService;
+import org.georchestra.ldapadmin.model.UserToken;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -54,7 +55,7 @@ public class PasswordRecoveryFormControllerTest {
 
     @Before
     public void setUp() throws Exception {
-        ctrl = new PasswordRecoveryFormController(dao,gdao, srv, utd, cfg, rec, rep);
+        ctrl = new PasswordRecoveryFormController(dao, gdao, srv, cfg, rec, rep);
     }
 
     @After
@@ -71,7 +72,7 @@ public class PasswordRecoveryFormControllerTest {
         Account account = Mockito.mock(Account.class);
         Mockito.when(account.getUid()).thenReturn("1");
         Mockito.when(dao.findByEmail(Mockito.anyString())).thenReturn(account);
-        Mockito.when(utd.exist(Mockito.anyString())).thenReturn(true);
+        Mockito.when(utd.exists(Mockito.anyString())).thenReturn(true);
     }
 
     @Test
@@ -99,9 +100,9 @@ public class PasswordRecoveryFormControllerTest {
     @Test
     public void testGenerateTokenWithDataServiceException() throws Exception {
         prepareLegitRequest();
-        Mockito.when(utd.exist(Mockito.anyString())).thenReturn(false);
+        Mockito.when(utd.exists(Mockito.anyString())).thenReturn(false);
 
-        Mockito.doThrow(DataServiceException.class).when(utd).insertToken(Mockito.anyString(), Mockito.anyString());
+        Mockito.doThrow(DataServiceException.class).when(utd).save(new UserToken(Mockito.anyString(), Mockito.anyString()));
 
         try {
             ctrl.generateToken(request, formBean, result, status);
@@ -114,7 +115,7 @@ public class PasswordRecoveryFormControllerTest {
     @Test
     public void testGenerateTokenWithUserNotFound() throws Exception {
         prepareLegitRequest();
-        Mockito.when(utd.exist(Mockito.anyString())).thenReturn(false);
+        Mockito.when(utd.exists(Mockito.anyString())).thenReturn(false);
         Mockito.doThrow(NotFoundException.class).when(dao).findByEmail(Mockito.anyString());
 
         String ret = ctrl.generateToken(request, formBean, result, status);
