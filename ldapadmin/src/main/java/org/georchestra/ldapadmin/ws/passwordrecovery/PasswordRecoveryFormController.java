@@ -19,10 +19,11 @@ import org.georchestra.ldapadmin.ds.AccountDao;
 import org.georchestra.ldapadmin.ds.DataServiceException;
 import org.georchestra.ldapadmin.ds.GroupDao;
 import org.georchestra.ldapadmin.ds.NotFoundException;
-import org.georchestra.ldapadmin.ds.UserTokenDao;
+import org.georchestra.ldapadmin.dao.UserTokenDao;
 import org.georchestra.ldapadmin.dto.Account;
 import org.georchestra.ldapadmin.dto.Group;
 import org.georchestra.ldapadmin.mailservice.MailService;
+import org.georchestra.ldapadmin.model.UserToken;
 import org.georchestra.ldapadmin.ws.utils.EmailUtils;
 import org.georchestra.ldapadmin.ws.utils.RecaptchaUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,23 +66,23 @@ public class PasswordRecoveryFormController  {
 	private AccountDao accountDao;
 	private GroupDao groupDao;
 	private MailService mailService;
-	private UserTokenDao userTokenDao;
+
+	@Autowired
+	private UserTokenDao userTokenRepo;
 	private Configuration config;
 	private ReCaptcha reCaptcha;
 	private ReCaptchaParameters reCaptchaParameters;
 	
 
 	@Autowired
-	public PasswordRecoveryFormController( AccountDao dao,GroupDao gDao, MailService mailSrv, UserTokenDao userTokenDao,
+	public PasswordRecoveryFormController( AccountDao dao,GroupDao gDao, MailService mailSrv,
 			Configuration cfg, ReCaptcha reCaptcha, ReCaptchaParameters reCaptchaParameters){
 		this.accountDao = dao;
 		this.groupDao = gDao;
 		this.mailService = mailSrv;
-		this.userTokenDao = userTokenDao;
 		this.config = cfg;
 		this.reCaptcha = reCaptcha;
 		this.reCaptchaParameters = reCaptchaParameters;
-		
 	}
 	
 	@InitBinder
@@ -127,8 +128,6 @@ public class PasswordRecoveryFormController  {
 		if(resultErrors.hasErrors()){
 			return "passwordRecoveryForm";
 		}
-
-		
 		
 		String remoteAddr = request.getRemoteAddr();
 		new RecaptchaUtils(remoteAddr, this.reCaptcha).validate(formBean.getRecaptcha_challenge_field(), formBean.getRecaptcha_response_field(), resultErrors);
@@ -140,9 +139,7 @@ public class PasswordRecoveryFormController  {
 			Account account = this.accountDao.findByEmail(formBean.getEmail());
 			List<Group> group = this.groupDao.findAllForUser(account.getUid());
 			// Finds the user using the email as key, if it exists a new token is generated to include in the unique http URL.
-			
 
-			
 			for (Group g : group) {
 				if (g.getName().equals("PENDING")) {
 					throw new NotFoundException("User in PENDING group");
@@ -151,14 +148,14 @@ public class PasswordRecoveryFormController  {
 			
 			String token = UUID.randomUUID().toString();
 
-		
-			
 			// if there is a previous token it is removed
-			if( this.userTokenDao.exist(account.getUid()) ) {
-				this.userTokenDao.delete(account.getUid());
+			UserToken userToken = this.userTokenRepo.findOneByUid(account.getUid());
+			if( userToken != null ) {
+				this.userTokenRepo.delete(userToken);
 			}
-			
-			this.userTokenDao.insertToken(account.getUid(), token);
+
+			userToken = new UserToken(account.getUid(), token);
+			this.userTokenRepo.save(userToken);
 			
 			String contextPath = this.config.getPublicContextPath();
 			String url = makeChangePasswordURL(request.getServerName(), request.getServerPort(), contextPath, token);
@@ -185,10 +182,12 @@ public class PasswordRecoveryFormController  {
 
 
 	/**
-	 * Create the URL to change the password based on the provided token  
+	 * Create the URL to change the password based on the provided token
+	 * @param host
+	 * @param port
+	 * @param contextPath
 	 * @param token
-	 * @param token2 
-	 * 
+	 *
 	 * @return a new URL to change password
 	 */
 	private String makeChangePasswordURL(final String host, final int port, final String contextPath, final String token) {

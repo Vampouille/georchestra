@@ -10,7 +10,8 @@ import org.apache.commons.logging.LogFactory;
 import org.georchestra.ldapadmin.ds.AccountDao;
 import org.georchestra.ldapadmin.ds.DataServiceException;
 import org.georchestra.ldapadmin.ds.NotFoundException;
-import org.georchestra.ldapadmin.ds.UserTokenDao;
+import org.georchestra.ldapadmin.dao.UserTokenDao;
+import org.georchestra.ldapadmin.model.UserToken;
 import org.georchestra.ldapadmin.ws.utils.PasswordUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -37,19 +38,14 @@ public class NewPasswordFormController {
 
 	private static final Log LOG = LogFactory.getLog(NewPasswordFormController.class.getName());
 
-	private AccountDao accountDao;
-	private UserTokenDao userTokenDao;
-	
 	@Autowired
-	public NewPasswordFormController( AccountDao accountDao, UserTokenDao userTokenDao){
-		this.accountDao = accountDao;
-		this.userTokenDao = userTokenDao;
-	}
-	
-	
+	private AccountDao accountDao;
+
+	@Autowired
+	private UserTokenDao userTokenRepo;
+
 	@InitBinder
 	public void initForm( WebDataBinder dataBinder) {
-		
 		dataBinder.setAllowedFields(new String[]{"password", "confirmPassword"});
 	}
 	
@@ -63,35 +59,28 @@ public class NewPasswordFormController {
 	 * @param model 
 	 * 
 	 * @return newPasswordForm or passwordRecoveryForm
-	 * 
-	 * @throws IOException
+	 *
 	 */
 	@RequestMapping(value="/account/newPassword", method=RequestMethod.GET)
-	public String setupForm(@RequestParam("token") String token, Model model) throws IOException{
-		
+	public String setupForm(@RequestParam("token") String token, Model model){
 
 		try{
-			final String uid = this.userTokenDao.findUserByToken(token);
+			UserToken userToken = this.userTokenRepo.findOneByToken(token);
 			
 			NewPasswordFormBean formBean = new NewPasswordFormBean();
 
 			formBean.setToken(token);
-			formBean.setUid(uid);
+			formBean.setUid(userToken.getUid());
 			
 			model.addAttribute(formBean);
 			
 			return "newPasswordForm";
 			
-		} catch(NotFoundException e){
+		} catch(NullPointerException e){
 
 			return "passwordRecoveryForm";
 			
-		} catch (DataServiceException e) {
-
-			LOG.error("cannot insert the setup the passwordRecoveryForm. " + e.getMessage());
-			
-			throw new IOException(e);
-		} 
+		}
 		
 	}
 
@@ -107,18 +96,13 @@ public class NewPasswordFormController {
 	 * @throws IOException 
 	 */
 	@RequestMapping(value="/account/newPassword", method=RequestMethod.POST)
-	public String newPassword(
-						@ModelAttribute NewPasswordFormBean formBean, 
-						BindingResult result, 
-						SessionStatus sessionStatus) 
-						throws IOException {
-		
+	public String newPassword(@ModelAttribute NewPasswordFormBean formBean,
+							  BindingResult result,
+							  SessionStatus sessionStatus) throws IOException {
 		
 		PasswordUtils.validate( formBean.getPassword(), formBean.getConfirmPassword(), result);
-
 		
 		if(result.hasErrors()){
-			
 			return "newPasswordForm";
 		}
 
@@ -126,22 +110,19 @@ public class NewPasswordFormController {
 		try {
 
 			String uid = formBean.getUid();
-			String  password = formBean.getPassword();
+			String password = formBean.getPassword();
 			
 			this.accountDao.changePassword(uid, password);
+			this.userTokenRepo.delete(this.userTokenRepo.findOne(uid));
 
-			this.userTokenDao.delete(uid);
-			
 			sessionStatus.setComplete();
 			
 			return "passwordUpdated";			
 			
 		} catch (DataServiceException e) {
 			LOG.error("cannot set the the new password. " + e.getMessage());
-			
 			throw new IOException(e);
-			
-		} 
+		}
 	}
 	
 	@ModelAttribute("newPasswordFormBean")

@@ -95,8 +95,6 @@
     </property>
   </bean>
 
-  <bean id="userTokenDao" class="org.georchestra.ldapadmin.ds.UserTokenDao"/>
-
 <!-- TODO re-apply specific params on new dataSource :  testOnBorrow, poolPreparedStatements, ... -->
     <!--<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">-->
         <!--<property name="url" value="${psql.url}"/>-->
