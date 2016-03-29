@@ -50,6 +50,7 @@ geoserver:
     - geoserver_geowebcache:/var/local/geowebcache
   links:
     - database
+    - ldap
 
 proxy:
   image: georchestra/security-proxy
