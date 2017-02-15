@@ -29,8 +29,8 @@ public class HeaderNames {
     public static final String SEC_USERNAME = "sec-username";
     public static final String SEC_ROLES = "sec-roles";
     public static final String REFERER_HEADER_NAME = "referer";
-    static final String IMP_ROLES = "imp-roles";
-    static final String IMP_USERNAME = "imp-username";
+    public static final String IMP_ROLES = "imp-roles";
+    public static final String IMP_USERNAME = "imp-username";
     public static final String JSESSION_ID = "JSESSIONID";
     public static final String SET_COOKIE_ID ="Set-Cookie";
     public static final String COOKIE_ID ="Cookie";

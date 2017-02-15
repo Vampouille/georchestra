@@ -60,6 +60,7 @@
         <property name="referer" value="${scheme}://${public_host}/"/>
         <property name="headerProviders">
             <list>
+                <bean class="org.georchestra.security.TrustProxyRequestHeaderProvider" init-method="init"/>
                 <bean class="org.georchestra.security.SecurityRequestHeaderProvider"/>
                 <bean class="org.georchestra.security.ImpersonateUserRequestHeaderProvider" init-method="init">
                     <property name="trustedUsers">
@@ -81,7 +82,7 @@
         </property>
         <property name="filters">
             <list>
-                <bean class="org.georchestra.security.SecurityRequestHeaderFilter" />
+                <bean class="org.georchestra.security.SecurityRequestHeaderFilter" init-method="init"/>
                 <bean class="org.georchestra.security.RemoveXForwardedHeaders" init-method="init">
                     <!-- Only one of includes or excludes may have elements -->
                     <property name="includes">
