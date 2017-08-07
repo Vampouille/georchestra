@@ -562,6 +562,8 @@ public class UsersController {
             JSONArray fields = new JSONArray();
             fields.put("uid");
             fields.put("mail");
+            fields.put("sn");
+            fields.put("givenName");
             ResponseUtil.buildResponse(response, fields.toString(4), HttpServletResponse.SC_OK);
         } catch (Exception e) {
             LOG.error(e.getMessage());
