@@ -323,14 +323,24 @@ public class OrgsController {
     public void getAreaConfig(HttpServletResponse response) throws IOException, JSONException {
         JSONObject res = new JSONObject();
         JSONObject map = new JSONObject();
-        // Parse center
-        String[] rawCenter = this.georConfig.getProperty("AreaMapCenter").split("\\s*,\\s*");
-        JSONArray center = new JSONArray();
-        center.put(Double.parseDouble(rawCenter[0]));
-        center.put(Double.parseDouble(rawCenter[1]));
-        map.put("center", center);
-        map.put("zoom", this.georConfig.getProperty("AreaMapZoom"));
-        res.put("map", map);
+        boolean auto = true;
+        try {
+            if(auto)
+                throw new Exception();
+            // Parse center
+            String[] rawCenter = this.georConfig.getProperty("AreaMapCenter").split("\\s*,\\s*");
+            JSONArray center = new JSONArray();
+            center.put(Double.parseDouble(rawCenter[0]));
+            center.put(Double.parseDouble(rawCenter[1]));
+            map.put("center", center);
+            // Set Zoom
+            map.put("zoom", this.georConfig.getProperty("AreaMapZoom"));
+            res.put("map", map);
+        } catch (Exception e){
+            map.put("zoom", -1);
+            res.put("map", map);
+        }
+        // Set area source (mandatory)
         JSONObject areas = new JSONObject();
         areas.put("url", this.georConfig.getProperty("AreasUrl"));
         areas.put("key", this.georConfig.getProperty("AreasKey"));

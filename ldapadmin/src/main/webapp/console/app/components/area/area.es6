@@ -43,10 +43,6 @@ class AreaController {
         }),
         vector
       ],
-      view: new ol.View({
-        center: ol.proj.fromLonLat(config.map.center),
-        zoom: config.map.zoom
-      }),
       logo: false
     })
     this.map = map
@@ -87,6 +83,16 @@ class AreaController {
         f.setId(key)
         if (this.ids.indexOf(f.getId()) >= 0) selected.push(f)
       })
+
+      if (config.map.zoom === -1) {
+        map.getView().fit(vector.getSource().getExtent(), map.getSize())
+      } else {
+        map.setView(new ol.View({
+          center: ol.proj.fromLonLat(config.map.center),
+          zoom: config.map.zoom
+        }))
+      }
+
       updateSelection(selected)
       this.loading = false
     })
